@@ -1,3 +1,4 @@
 feedparser
 requests
 openai
+openai==0.28
