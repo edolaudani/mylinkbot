@@ -7,7 +7,7 @@ import openai
 # -----------------------------
 # CONFIGURAZIONE DA VARIABILI D'AMBIENTE
 # -----------------------------
-NOTION_TOKEN = os.getenv("NOTION_TOKEN")
+NOTION_TOKEN = os.getenv("NOTION_API_KEY")
 DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
 OPENAI_KEY = os.getenv("OPENAI_API_KEY")
 RSS_FEED = os.getenv("RSS_FEED")
