@@ -10,7 +10,7 @@ import openai
 NOTION_TOKEN = os.getenv("NOTION_TOKEN")
 DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
 OPENAI_KEY = os.getenv("OPENAI_API_KEY")
-RSS_FEED = os.getenv("RSS_FEED_URL")
+RSS_FEED = os.getenv("RSS_FEED")
 
 openai.api_key = OPENAI_KEY
 
