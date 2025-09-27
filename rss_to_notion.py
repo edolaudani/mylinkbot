@@ -61,7 +61,7 @@ def add_to_notion(item):
             "Link": {"url": item.get("link")},
             "Company": {"rich_text": [{"text": {"content": item.get("company", "")}}]},
             "Location": {"rich_text": [{"text": {"content": item.get("location", "")}}]},
-            "Description": {"rich_text": [{"text": {"content": item.get("description", "")}}]}
+            "Description": {"rich_text": [{"text": {"content": description}}]}
         }
     }
 
