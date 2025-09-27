@@ -1,68 +1,95 @@
 import os
 import feedparser
 import requests
-import time
 import json
+import openai
 
-# --- CONFIG ---
-NOTION_API_KEY = os.environ.get("NOTION_API_KEY")
-NOTION_DATABASE_ID = os.environ.get("NOTION_DATABASE_ID")
+# -----------------------------
+# CONFIGURAZIONE DA VARIABILI D'AMBIENTE
+# -----------------------------
+NOTION_TOKEN = os.getenv("NOTION_TOKEN")
+DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
+OPENAI_KEY = os.getenv("OPENAI_API_KEY")
+RSS_FEED = os.getenv("RSS_FEED_URL")
 
-RSS_URL = "https://rss.app/feeds/Y68rj3ThBhhTnpTI.xml"
+openai.api_key = OPENAI_KEY
 
-HEADERS_NOTION = {
-    "Authorization": f"Bearer {NOTION_API_KEY}",
+# Headers per Notion API
+headers = {
+    "Authorization": f"Bearer {NOTION_TOKEN}",
     "Content-Type": "application/json",
     "Notion-Version": "2022-06-28"
 }
 
-CACHE_FILE = "notion_rss_cache.json"
+# -----------------------------
+# FUNZIONE PER USARE OPENAI
+# -----------------------------
+def extract_details_with_ai(title, description):
+    prompt = f"""
+    Extract the company name and location from this job listing.
+    Title: {title}
+    Description: {description}
+    Return as JSON with keys "company" and "location". If not found, return empty strings.
+    """
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0
+        )
+        text = response['choices'][0]['message']['content']
+        result = json.loads(text)
+        return result.get("company", ""), result.get("location", "")
+    except Exception as e:
+        print(f"⚠️ AI extraction failed: {e}")
+        return "", ""
 
-# --- FUNZIONI UTILI ---
-def load_cache():
-    if os.path.exists(CACHE_FILE):
-        with open(CACHE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return []
-
-def save_cache(urls):
-    with open(CACHE_FILE, "w", encoding="utf-8") as f:
-        json.dump(urls, f, ensure_ascii=False, indent=2)
-
-def send_to_notion(title, link):
-    payload = {
-        "parent": {"database_id": NOTION_DATABASE_ID},
+# -----------------------------
+# FUNZIONE PER CREARE UNA PAGINA IN NOTION
+# -----------------------------
+def add_to_notion(item):
+    data = {
+        "parent": {"database_id": DATABASE_ID},
         "properties": {
-            "title": {"title": [{"text": {"content": title}}]},
-            "link": {"url": link}
+            "Title": {"title": [{"text": {"content": item.get("title", "No Title")}}]},
+            "Link": {"url": item.get("link")},
+            "Company": {"rich_text": [{"text": {"content": item.get("company", "")}}]},
+            "Location": {"rich_text": [{"text": {"content": item.get("location", "")}}]},
+            "Description": {"rich_text": [{"text": {"content": item.get("description", "")}}]}
         }
     }
-    response = requests.post("https://api.notion.com/v1/pages", headers=HEADERS_NOTION, json=payload)
-    if response.status_code == 200:
-        print(f"✅ Added to Notion: {title}")
-        return True
+
+    response = requests.post("https://api.notion.com/v1/pages", headers=headers, data=json.dumps(data))
+    
+    if response.status_code in [200, 201]:
+        print(f"✅ Added: {item.get('title')}")
     else:
-        print(f"❌ Failed to add: {title} - {response.text}")
-        return False
+        print(f"❌ Failed to add: {item.get('title')} - {response.text}")
 
-# --- SCRIPT PRINCIPALE ---
-def main():
-    cache = load_cache()
-    feed = feedparser.parse(RSS_URL)
-    new_links = []
+# -----------------------------
+# PARSING RSS
+# -----------------------------
+feed = feedparser.parse(RSS_FEED)
 
-    for entry in feed.entries:
-        if entry.link not in cache:
-            if send_to_notion(entry.title, entry.link):
-                cache.append(entry.link)
-                new_links.append(entry.link)
-            time.sleep(1)  # evita troppi request rapidi
+for entry in feed.entries:
+    title = entry.get("title", "")
+    link = entry.get("link", "")
+    description = entry.get("summary", "")
 
-    if new_links:
-        save_cache(cache)
-        print(f"🎉 Added {len(new_links)} new items to Notion!")
-    else:
-        print("ℹ️ No new items to add.")
+    # Estrai company e location con AI
+    company, location = extract_details_with_ai(title, description)
 
-if __name__ == "__main__":
-    main()
+    # Prepara il dizionario con i campi
+    item = {
+        "title": title,
+        "link": link,
+        "description": description,
+        "company": company,
+        "location": location
+    }
+
+    # Inserisci nella Notion
+    add_to_notion(item)
+
+print("Done.")
+
