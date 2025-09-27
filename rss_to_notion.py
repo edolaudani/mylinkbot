@@ -48,6 +48,12 @@ def extract_details_with_ai(title, description):
 # FUNZIONE PER CREARE UNA PAGINA IN NOTION
 # -----------------------------
 def add_to_notion(item):
+
+    description = item.get("description", "")
+    # tronca a 1500 caratteri per evitare l'errore di Notion
+    if len(description) > 1990:
+        description = description[:1990]
+    
     data = {
         "parent": {"database_id": DATABASE_ID},
         "properties": {
