@@ -29,7 +29,7 @@ def extract_details_with_ai(title, description):
     Extract the company name and location from this job listing.
     Title: {title}
     Description: {description}
-    Return as JSON with keys "company" and "location". If not found, return empty strings.
+    Return as JSON with keys "company" and "location". If not found, return empty strings. Very important: description cannot exceed 1500 characters.
     """
     try:
         response = openai.ChatCompletion.create(
